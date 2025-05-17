@@ -1,32 +1,33 @@
-from flask import Flask, request
-from telegram import Bot
-from apscheduler.schedulers.background import BackgroundScheduler
+import asyncio
+from aiogram import Bot, Dispatcher
+from handlers import router
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from diario import enviar_analises_diarias
 import logging
-from utils.analysis import analisar_jogos, analisar_jogo_individual
-from utils.telegram_utils import enviar_mensagem, handle_comandos
+import os
 
-TOKEN = "8124502590:AAHOzEYywnp6sNuEyDn9Lz4ZNyMIIfF8RiM"  # Novo token do bot
+# Ativar logs
+logging.basicConfig(level=logging.INFO)
+
+# Obter token do ambiente
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+# Criar bot e dispatcher
 bot = Bot(token=TOKEN)
-app = Flask(__name__)
+dp = Dispatcher()
+dp.include_router(router)
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    update = request.get_json(force=True)
-    handle_comandos(update, bot)
-    return "OK"
+# Criar agendador
+scheduler = AsyncIOScheduler()
 
-@app.route("/")
-def index():
-    return "Bot de apostas esportivas ativo."
+# Agendar tarefa diária às 9h
+scheduler.add_job(enviar_analises_diarias, CronTrigger(hour=9, minute=0))
 
-def analise_diaria():
-    jogos = analisar_jogos()
-    for jogo in jogos:
-        enviar_mensagem(bot, jogo)
+async def main():
+    scheduler.start()
+    logging.info("Bot iniciado com sucesso.")
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(analise_diaria, 'cron', hour=9)
-    scheduler.start()
-    app.run(host="0.0.0.0", port=10000)
+    asyncio.run(main())
