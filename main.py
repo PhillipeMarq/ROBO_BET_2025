@@ -1,62 +1,63 @@
-from flask import Flask, request
-from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler
 import logging
-import os
+from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram import Update
+from apscheduler.schedulers.background import BackgroundScheduler
+import datetime
+from analise_jogos import analisar_jogos_hoje, analisar_jogo_especifico
+from previsor_ia import prever_resultado
 
-# ======================= CONFIGURAÇÕES =======================
-
+# ============ CONFIGURAÇÃO ============
 TOKEN = "8124502590:AAHOzEYywnp6sNuEyDn9Lz4ZNyMIIfF8RiM"
-WEBHOOK_URL = "https://sinais-ia.onrender.com/webhook"
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# ======================= INICIALIZAÇÃO =======================
+# ============ COMANDOS ============
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text("👋 Olá! Eu sou o robô de apostas esportivas.\n\nUse:\n/analise Flamengo x Grêmio\n/prever Palmeiras x Vasco")
 
-app = Flask(__name__)
-bot = Bot(token=TOKEN)
-
-# Dispatcher responsável pelos comandos
-dispatcher = Dispatcher(bot=bot, update_queue=None, use_context=True)
-
-# ======================= HANDLERS DE COMANDO =======================
-
-def start(update, context):
-    update.message.reply_text("Olá! Eu sou o robô de apostas esportivas. Use /analise para receber uma análise!")
-
-def analise(update, context):
-    update.message.reply_text("🔎 Analisando jogos... (em breve trarei as estatísticas!)")
-
-# ======================= REGISTRO DOS COMANDOS =======================
-
-dispatcher.add_handler(CommandHandler("start", start))
-dispatcher.add_handler(CommandHandler("analise", analise))
-
-# ======================= ROTA DO WEBHOOK =======================
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), bot)
-        dispatcher.process_update(update)
-    return 'ok'
-
-# ======================= ROTA PRINCIPAL =======================
-
-@app.route('/', methods=['GET'])
-def index():
-    return 'Bot está ativo!'
-
-# ======================= CONFIGURAÇÃO DO WEBHOOK =======================
-
-def set_webhook():
-    success = bot.set_webhook(url=WEBHOOK_URL)
-    if success:
-        print("✅ Webhook configurado com sucesso!")
+def analise(update: Update, context: CallbackContext):
+    if context.args:
+        jogo = ' '.join(context.args)
+        resposta = analisar_jogo_especifico(jogo)
+        update.message.reply_text(resposta)
     else:
-        print("❌ Falha ao configurar o webhook.")
+        update.message.reply_text("❗ Use assim: /analise Flamengo x Grêmio")
 
-# ======================= MAIN =======================
+def prever(update: Update, context: CallbackContext):
+    if context.args:
+        jogo = ' '.join(context.args)
+        resposta = prever_resultado(jogo)
+        update.message.reply_text(resposta)
+    else:
+        update.message.reply_text("❗ Use assim: /prever Flamengo x Grêmio")
+
+def analise_diaria(context: CallbackContext):
+    hoje = datetime.date.today()
+    texto = analisar_jogos_hoje(hoje)
+    context.bot.send_message(chat_id=context.job.context, text=texto)
+
+# ============ MAIN ============
+def main():
+    updater = Updater(TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("analise", analise))
+    dp.add_handler(CommandHandler("prever", prever))
+
+    # Agendador diário às 9h
+    scheduler = BackgroundScheduler()
+    scheduler.start()
+    scheduler.add_job(
+        analise_diaria,
+        trigger='cron',
+        hour=9,
+        minute=0,
+        context=updater.bot.get_me().id  # Enviar no chat do próprio bot (ajuste se necessário)
+    )
+
+    print("🤖 Bot iniciado com polling...")
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == '__main__':
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-    set_webhook()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+    main()
