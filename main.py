@@ -1,66 +1,62 @@
+from flask import Flask, request
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler
 import logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from apscheduler.schedulers.background import BackgroundScheduler
-from analise_jogos import enviar_analises_automaticas
-from prever import prever_resultado
-from analise_jogos import analisar_jogo_especifico, analisar_jogos_do_dia
+import os
 
-# Token atualizado do seu bot
+# ======================= CONFIGURAÇÕES =======================
+
 TOKEN = "8124502590:AAHOzEYywnp6sNuEyDn9Lz4ZNyMIIfF8RiM"
+WEBHOOK_URL = "https://sinais-ia.onrender.com/webhook"
 
-# Setup de log
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+# ======================= INICIALIZAÇÃO =======================
 
-# Comando /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🤖 Olá! Eu sou o seu bot de análises esportivas.\n"
-        "📊 Use /analise para ver análises dos próximos jogos.\n"
-        "📌 Use /analise Flamengo x Grêmio para análise de um jogo específico.\n"
-        "🧠 Use /prever Flamengo x Grêmio para prever o resultado com IA."
-    )
+app = Flask(__name__)
+bot = Bot(token=TOKEN)
 
-# Comando /analise
-async def analise(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.args:
-        jogo = " ".join(context.args)
-        resposta = await analisar_jogo_especifico(jogo)
+# Dispatcher responsável pelos comandos
+dispatcher = Dispatcher(bot=bot, update_queue=None, use_context=True)
+
+# ======================= HANDLERS DE COMANDO =======================
+
+def start(update, context):
+    update.message.reply_text("Olá! Eu sou o robô de apostas esportivas. Use /analise para receber uma análise!")
+
+def analise(update, context):
+    update.message.reply_text("🔎 Analisando jogos... (em breve trarei as estatísticas!)")
+
+# ======================= REGISTRO DOS COMANDOS =======================
+
+dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(CommandHandler("analise", analise))
+
+# ======================= ROTA DO WEBHOOK =======================
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    if request.method == "POST":
+        update = Update.de_json(request.get_json(force=True), bot)
+        dispatcher.process_update(update)
+    return 'ok'
+
+# ======================= ROTA PRINCIPAL =======================
+
+@app.route('/', methods=['GET'])
+def index():
+    return 'Bot está ativo!'
+
+# ======================= CONFIGURAÇÃO DO WEBHOOK =======================
+
+def set_webhook():
+    success = bot.set_webhook(url=WEBHOOK_URL)
+    if success:
+        print("✅ Webhook configurado com sucesso!")
     else:
-        resposta = await analisar_jogos_do_dia()
-    await update.message.reply_text(resposta)
+        print("❌ Falha ao configurar o webhook.")
 
-# Comando /prever
-async def prever(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.args:
-        jogo = " ".join(context.args)
-        resposta = await prever_resultado(jogo)
-    else:
-        resposta = "❌ Por favor, envie o nome do jogo. Exemplo: /prever Flamengo x Grêmio"
-    await update.message.reply_text(resposta)
+# ======================= MAIN =======================
 
-# Agendamento automático diário
-def iniciar_agendamentos(application):
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(lambda: enviar_analises_automaticas(application), 'cron', hour=9, minute=0)
-    scheduler.start()
-
-# Função principal
-async def main():
-    application = ApplicationBuilder().token(TOKEN).build()
-
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("analise", analise))
-    application.add_handler(CommandHandler("prever", prever))
-
-    iniciar_agendamentos(application)
-
-    await application.run_polling()
-
-# Iniciar
 if __name__ == '__main__':
-    import asyncio
-    asyncio.run(main())
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+    set_webhook()
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
