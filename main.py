@@ -1,4 +1,3 @@
-
 from flask import Flask, request
 from telegram import Bot
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -10,7 +9,7 @@ TOKEN = "8124502590:AAHOzEYywnp6sNuEyDn9Lz4ZNyMIIfF8RiM"  # Novo token do bot
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
 
-@app.route(f"/{TOKEN}", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def webhook():
     update = request.get_json(force=True)
     handle_comandos(update, bot)
