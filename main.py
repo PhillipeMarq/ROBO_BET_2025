@@ -1,33 +1,66 @@
-import asyncio
-from aiogram import Bot, Dispatcher
-from handlers import router
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-from diario import enviar_analises_diarias
 import logging
-import os
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from apscheduler.schedulers.background import BackgroundScheduler
+from analise_jogos import enviar_analises_automaticas
+from prever import prever_resultado
+from analise_jogos import analisar_jogo_especifico, analisar_jogos_do_dia
 
-# Ativar logs
-logging.basicConfig(level=logging.INFO)
+# Token atualizado do seu bot
+TOKEN = "8124502590:AAHOzEYywnp6sNuEyDn9Lz4ZNyMIIfF8RiM"
 
-# Obter token do ambiente
-TOKEN = os.getenv("TELEGRAM_TOKEN")
+# Setup de log
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 
-# Criar bot e dispatcher
-bot = Bot(token=TOKEN)
-dp = Dispatcher()
-dp.include_router(router)
+# Comando /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🤖 Olá! Eu sou o seu bot de análises esportivas.\n"
+        "📊 Use /analise para ver análises dos próximos jogos.\n"
+        "📌 Use /analise Flamengo x Grêmio para análise de um jogo específico.\n"
+        "🧠 Use /prever Flamengo x Grêmio para prever o resultado com IA."
+    )
 
-# Criar agendador
-scheduler = AsyncIOScheduler()
+# Comando /analise
+async def analise(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args:
+        jogo = " ".join(context.args)
+        resposta = await analisar_jogo_especifico(jogo)
+    else:
+        resposta = await analisar_jogos_do_dia()
+    await update.message.reply_text(resposta)
 
-# Agendar tarefa diária às 9h
-scheduler.add_job(enviar_analises_diarias, CronTrigger(hour=9, minute=0))
+# Comando /prever
+async def prever(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args:
+        jogo = " ".join(context.args)
+        resposta = await prever_resultado(jogo)
+    else:
+        resposta = "❌ Por favor, envie o nome do jogo. Exemplo: /prever Flamengo x Grêmio"
+    await update.message.reply_text(resposta)
 
-async def main():
+# Agendamento automático diário
+def iniciar_agendamentos(application):
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(lambda: enviar_analises_automaticas(application), 'cron', hour=9, minute=0)
     scheduler.start()
-    logging.info("Bot iniciado com sucesso.")
-    await dp.start_polling(bot)
 
-if __name__ == "__main__":
+# Função principal
+async def main():
+    application = ApplicationBuilder().token(TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("analise", analise))
+    application.add_handler(CommandHandler("prever", prever))
+
+    iniciar_agendamentos(application)
+
+    await application.run_polling()
+
+# Iniciar
+if __name__ == '__main__':
+    import asyncio
     asyncio.run(main())
