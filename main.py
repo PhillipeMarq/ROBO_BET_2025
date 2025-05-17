@@ -3,42 +3,34 @@ from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
+from analise_jogos import analisar_jogos_hoje, analisar_jogo_especifico
+from previsor_ia import prever_resultado
 
-from telegram_utils import (
-    analisar_jogos,
-    analisar_jogo_individual,
-    prever_resultado,
-    sugestao_aposta
-)
-
-# ============ CONFIGURAÇÃO ============
+# ============ CONFIG ============
 TOKEN = "8124502590:AAHOzEYywnp6sNuEyDn9Lz4ZNyMIIfF8RiM"
-CHAT_ID_ENVIO_DIARIO = 7178592047
+CHAT_ID_TESTE = 7178592047  # Seu chat ID direto
 
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
 # ============ COMANDOS ============
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text(
-        "👋 Olá! Eu sou o robô de apostas esportivas.\n\n"
-        "📊 Use os comandos abaixo:\n"
-        "/analise Flamengo x Grêmio - para análise completa\n"
-        "/prever Palmeiras x Vasco - para previsão com IA"
-    )
+    logging.info(f"✅ Comando /start recebido de {update.effective_user.username}")
+    update.message.reply_text("👋 Olá! Robô de apostas esportivas ativo.")
 
 def analise(update: Update, context: CallbackContext):
+    logging.info("📥 Comando /analise recebido")
     if context.args:
         jogo = ' '.join(context.args)
-        resposta = analisar_jogo_individual(jogo)
+        resposta = analisar_jogo_especifico(jogo)
+        update.message.reply_text(resposta)
     else:
-        resposta = "\n\n".join(analisar_jogos())
-    resposta += "\n" + sugestao_aposta()
-    update.message.reply_text(resposta)
+        update.message.reply_text("❗ Use assim: /analise Flamengo x Grêmio")
 
 def prever(update: Update, context: CallbackContext):
+    logging.info("📥 Comando /prever recebido")
     if context.args:
         jogo = ' '.join(context.args)
         resposta = prever_resultado(jogo)
@@ -47,16 +39,14 @@ def prever(update: Update, context: CallbackContext):
         update.message.reply_text("❗ Use assim: /prever Flamengo x Grêmio")
 
 def analise_diaria(context: CallbackContext):
-    try:
-        texto = "\n\n".join(analisar_jogos())
-        texto += "\n" + sugestao_aposta()
-        context.bot.send_message(chat_id=CHAT_ID_ENVIO_DIARIO, text=texto)
-        logging.info("✅ Análise diária enviada com sucesso.")
-    except Exception as e:
-        logging.error(f"Erro ao enviar análise diária: {e}")
+    hoje = datetime.date.today()
+    texto = analisar_jogos_hoje(hoje)
+    logging.info("📤 Enviando análise automática diária")
+    context.bot.send_message(chat_id=CHAT_ID_TESTE, text=texto)
 
 # ============ MAIN ============
 def main():
+    logging.info("🚀 Iniciando bot em modo polling...")
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
 
@@ -64,19 +54,19 @@ def main():
     dp.add_handler(CommandHandler("analise", analise))
     dp.add_handler(CommandHandler("prever", prever))
 
-    # Agendador diário às 9h
+    # Agendamento da análise diária
     scheduler = BackgroundScheduler()
+    scheduler.start()
     scheduler.add_job(
         analise_diaria,
         trigger='cron',
         hour=9,
         minute=0,
-        args=[updater.bot]
+        context=updater.bot.get_me().id
     )
-    scheduler.start()
 
-    print("🤖 Bot iniciado com polling...")
     updater.start_polling()
+    logging.info("📡 Bot rodando... aguardando comandos.")
     updater.idle()
 
 if __name__ == '__main__':
