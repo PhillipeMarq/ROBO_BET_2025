@@ -7,7 +7,7 @@ from utils.telegram_utils import send_message
 from datetime import datetime
 import os
 
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("8124502590:AAHOzEYywnp6sNuEyDn9Lz4ZNyMIIfF8RiM")
 
 updater = Updater(token=TOKEN, use_context=True)
 dispatcher = updater.dispatcher
