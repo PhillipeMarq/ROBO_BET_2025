@@ -1,31 +1,19 @@
+from analise import analisar_jogos_hoje, analisar_jogo_especifico
+from previsao import prever_resultado_ia
+from apostas import sugestao_aposta_simples
 
-from telegram import Update
-from telegram.ext import CallbackContext
-from utils.analysis import analisar_jogos, analisar_jogo_individual
-from utils.prediction import prever_resultado
-from utils.betting import sugestao_aposta
+# Função para analisar jogos de hoje (sem parâmetros)
+def analisar_jogos():
+    return analisar_jogos_hoje()
 
-def enviar_mensagem(bot, texto):
-    bot.send_message(chat_id="@SINAIS_PH_CHANNEL", text=texto)
+# Função para analisar um jogo específico
+def analisar_jogo_individual(jogo):
+    return analisar_jogo_especifico(jogo)
 
-def handle_comandos(update_data, bot):
-    message = update_data.get("message") or update_data.get("edited_message")
-    if not message or "text" not in message:
-        return
+# Previsão com IA
+def prever_resultado(jogo):
+    return prever_resultado_ia(jogo)
 
-    texto = message["text"]
-    chat_id = message["chat"]["id"]
-
-    if texto.startswith("/analise"):
-        if " x " in texto:
-            jogo = texto.replace("/analise", "").strip()
-            resposta = analisar_jogo_individual(jogo)
-        else:
-            resposta = "\n\n".join(analisar_jogos())
-        resposta += "\n" + sugestao_aposta()
-        bot.send_message(chat_id=chat_id, text=resposta)
-
-    elif texto.startswith("/prever"):
-        jogo = texto.replace("/prever", "").strip()
-        resposta = prever_resultado(jogo)
-        bot.send_message(chat_id=chat_id, text=resposta)
+# Sugestão de aposta simples
+def sugestao_aposta():
+    return sugestao_aposta_simples()
