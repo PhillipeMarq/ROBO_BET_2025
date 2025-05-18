@@ -4,6 +4,7 @@ from analysis import analisar_jogos_antecipados, analisar_partida_especifica
 from prediction import prever_resultado_partida
 from telegram_utils import send_message
 from datetime import datetime
+import pytz  # Importar pytz para timezone compatível com APScheduler
 
 # ✅ TOKEN direto
 TOKEN = "8124502590:AAHOzEYywnp6sNuEyDn9Lz4ZNyMIIfF8RiM"
@@ -45,7 +46,7 @@ def main():
     dispatcher.add_handler(CommandHandler("analise", analise_command))
     dispatcher.add_handler(CommandHandler("prever", prever_command))
 
-    scheduler = BackgroundScheduler()
+    scheduler = BackgroundScheduler(timezone=pytz.utc)  # Corrigido para usar pytz.utc
     scheduler.add_job(tarefa_diaria, trigger='cron', hour=9, minute=0)
     scheduler.start()
 
