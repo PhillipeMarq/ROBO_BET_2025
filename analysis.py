@@ -1,4 +1,3 @@
-
 from datetime import datetime, timedelta
 
 def analisar_jogos_antecipados():
@@ -6,10 +5,17 @@ def analisar_jogos_antecipados():
     dias = [hoje + timedelta(days=i) for i in range(4)]
     resultados = []
     for dia in dias:
-        resultados.append(f"📅 Análises para o dia {dia.strftime('%d/%m/%Y')}:
+        resultados.append(
+            f"""📅 Análises para o dia {dia.strftime('%d/%m/%Y')}:
 - Flamengo x Vasco
-- Palmeiras x Santos")
+- Palmeiras x Santos"""
+        )
     return "\n\n".join(resultados)
 
 def analisar_partida_especifica(nome_partida):
-    return f"📊 Análise da partida: {nome_partida}\n🔍 Chances equilibradas, últimos jogos indicam empate.\n🔥 Estatísticas mostram alta média de gols.\nSugestão: Ambas marcam."
+    return (
+        f"📊 Análise da partida: {nome_partida}\n"
+        "🔍 Chances equilibradas, últimos jogos indicam empate.\n"
+        "🔥 Estatísticas mostram alta média de gols.\n"
+        "Sugestão: Ambas marcam."
+    )
