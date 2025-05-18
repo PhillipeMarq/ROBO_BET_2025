@@ -1,8 +1,8 @@
 from telegram.ext import Updater, CommandHandler
 from apscheduler.schedulers.background import BackgroundScheduler
-from utils.analysis import analisar_jogos_antecipados, analisar_partida_especifica
-from utils.prediction import prever_resultado_partida
-from utils.telegram_utils import send_message
+from .analysis import analisar_jogos_antecipados, analisar_partida_especifica
+from .prediction import prever_resultado_partida
+from .telegram_utils import send_message
 from datetime import datetime
 
 # ✅ TOKEN direto (você disse que está usando assim mesmo)
