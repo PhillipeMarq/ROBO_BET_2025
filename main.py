@@ -14,7 +14,7 @@ dispatcher = updater.dispatcher
 
 def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text="🤖 Olá! Sou o Robô de Análises Esportivas com IA!
+                             text="🤖 Olá! Sou o Robô de Análises Esportivas com IA! Envie /analise para ver os jogos, ou /prever para uma previsão com inteligência artificial."
 "
                                   "Use /analise para ver os jogos analisados.
 "
